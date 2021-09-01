@@ -74,7 +74,7 @@ void generateVertexSeparatedTuftedCover() {
 
   // Make it manifold
   manifoldTuftedMesh = tuftedMesh->toManifoldMesh();
-  // manifoldTuftedMesh->printStatistics();
+  
   tuftedGeom = tuftedGeom->reinterpretTo(*manifoldTuftedMesh);
   tuftedGeom->requireEdgeLengths();
   tuftedEdgeLengths = tuftedGeom->edgeLengths;
@@ -227,11 +227,16 @@ int main(int argc, char** argv) {
   args::ValueFlag<double> laplacianReplaceValArg(algorithmOptions, "laplacianReplace", "For any unreferenced vertices in the input, put this this value in the diagonal of the Laplace matrix. Default: 1", {"laplacianReplace"}, 1.);
   args::ValueFlag<double> massReplaceValArg(algorithmOptions, "massReplace", "For any unreferenced vertices in the input, put this this value in the diagonal of the mass matrix. Negative values will interpreted relative to the smallest mass entry among referenced vertices, like X times the smallest mass. Default: -1e-3", {"massReplace"}, -1e-3);
 
-  args::Group output(parser, "ouput");
+  args::Group output(parser, "output");
   args::Flag gui(output, "gui", "open a GUI after processing and generate some visualizations", {"gui"});
   args::ValueFlag<std::string> outputPrefixArg(output, "outputPrefix", "Prefix to prepend to output file paths. Default: tufted_", {"outputPrefix"}, "tufted_");
   args::Flag writeLaplacian(output, "writeLaplacian", "Write out the resulting (weak) Laplacian as a sparse matrix. name: 'laplacian.spmat'", {"writeLaplacian"});
   args::Flag writeMass(output, "writeMass", "Write out the resulting diagonal lumped mass matrix sparse matrix. name: 'lumped_mass.spmat'", {"writeMass"});
+  
+  //******
+  args::Flag writeTuftedMesh(output, "writeTuftedMesh", "Write out the tufted version of the input mesh", {"writeTuftedMesh"});
+  //******
+ 
   // clang-format on
 
   // Parse args
@@ -302,6 +307,24 @@ int main(int argc, char** argv) {
     M = M / 3.;
   }
   std::cout << "  ...done!" << std::endl;
+
+  //******
+  
+  // write tufted mesh, if requestedß
+  if (writeTuftedMesh) {
+    //saveTuftedMesh(outputPrefix + ".obj", T);
+    std::cout << "Building tufted mesh..." << std::endl;
+
+    generateVertexSeparatedTuftedCover();
+    manifoldTuftedMesh->printStatistics();
+
+    // Write a surface mesh
+    writeSurfaceMesh(*manifoldTuftedMesh, *tuftedGeom, outputPrefix +".obj"); 
+
+  }
+  
+
+  //******
 
   // If necessary, re-index matrices to account for any unreferenced vertices which were skipped.
   // For any unreferenced verts, creates an identity row/col in the Laplacian and
@@ -382,6 +405,7 @@ int main(int argc, char** argv) {
   if (writeMass) {
     saveMatrix(outputPrefix + "lumped_mass.spmat", M);
   }
+
 
   if (withGUI) {
     std::cout << "Generating visualization..." << std::endl;
